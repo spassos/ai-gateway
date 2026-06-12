@@ -1,4 +1,16 @@
-.PHONY: up down logs test lint smoke install-dev
+.PHONY: up down logs test lint smoke install-dev push-images
+
+# Projeto/região do deploy (ver infra/terraform/example.tfvars)
+GCP_PROJECT ?= bumblebee-fa6a1
+GCP_REGION  ?= us-central1
+REGISTRY     = $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/ai-gateway
+
+push-images: ## Build + push via Cloud Build. Uso: make push-images TAG=v0.1.0
+ifndef TAG
+	$(error Defina a tag: make push-images TAG=v0.1.0)
+endif
+	gcloud builds submit gateway --project $(GCP_PROJECT) --tag $(REGISTRY)/gateway:$(TAG)
+	gcloud builds submit broker --project $(GCP_PROJECT) --tag $(REGISTRY)/broker:$(TAG)
 
 up: ## Sobe o stack local (postgres + litellm + broker)
 	docker compose up --build -d

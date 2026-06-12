@@ -119,6 +119,51 @@ async def test_provision_denied_for_wrong_domain(audit_events, monkeypatch):
     assert audit_events[-1]["action"] == audit.AuditAction.PROVISION_DENIED
 
 
+async def test_provision_allows_email_in_allowlist_without_domain(audit_events, monkeypatch):
+    # Cenário sem Google Workspace: domínio vazio, autorização por allowlist.
+    settings = make_settings(
+        broker_dev_fake_auth=False,
+        broker_allowed_domain="",
+        broker_allowed_emails="sergio.passos88@gmail.com, outra@gmail.com",
+    )
+    monkeypatch.setattr(
+        "broker.auth.google_id_token.verify_oauth2_token",
+        lambda token, request, audience=None: {
+            "iss": "https://accounts.google.com",
+            "email": "Sergio.Passos88@gmail.com",
+            "email_verified": True,
+        },
+    )
+    async with make_client(FakeLiteLLM(), settings) as client:
+        response = await client.post(
+            "/v1/provision", headers={"Authorization": "Bearer fake-token"}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["user_email"] == "sergio.passos88@gmail.com"
+
+
+async def test_provision_denies_everything_when_nothing_configured(audit_events, monkeypatch):
+    # Fail closed: sem domínio e sem allowlist, nenhuma conta passa.
+    settings = make_settings(
+        broker_dev_fake_auth=False, broker_allowed_domain="", broker_allowed_emails=""
+    )
+    monkeypatch.setattr(
+        "broker.auth.google_id_token.verify_oauth2_token",
+        lambda token, request, audience=None: {
+            "iss": "https://accounts.google.com",
+            "email": "qualquer@gmail.com",
+            "email_verified": True,
+        },
+    )
+    async with make_client(FakeLiteLLM(), settings) as client:
+        response = await client.post(
+            "/v1/provision", headers={"Authorization": "Bearer fake-token"}
+        )
+
+    assert response.status_code == 403
+
+
 async def test_me_returns_budget_for_valid_key():
     async with make_client(FakeLiteLLM(), make_settings()) as client:
         response = await client.get("/v1/me", headers={"Authorization": "Bearer sk-new-key"})

@@ -35,7 +35,7 @@ US$ 50/usuário e onboarding via um único comando de CLI.
 |----|-----------|
 | FR-1 | Gateway expõe endpoint OpenAI-compatible (`/v1/chat/completions`, `/v1/models`) para Codex e Cursor. |
 | FR-2 | Gateway expõe endpoint Anthropic (`/v1/messages`) para Claude Code. |
-| FR-3 | Login restrito a contas Google do domínio corporativo; autorização primária via IAM (`roles/run.invoker` no grupo de devs). |
+| FR-3 | Login restrito a contas Google autorizadas — por domínio Workspace (`hd`) OU por allowlist de e-mails quando não há Workspace; autorização primária via IAM (`roles/run.invoker` por grupo ou por usuário). Nada configurado = nega tudo. |
 | FR-4 | Provisionamento de key idempotente, vinculado ao e-mail; re-login rotaciona a key sem zerar o gasto. |
 | FR-5 | Cada usuário tem `max_budget = 50 USD` e `budget_duration = 30d`; ao exceder, o gateway retorna HTTP 429 `budget_exceeded` (verificado no LiteLLM 1.88: `"ExceededBudget: User=... over budget"`). |
 | FR-6 | `ai-gw status` mostra gasto / limite / reset; `ai-gw models` lista modelos via `GET /v1/models`. |
