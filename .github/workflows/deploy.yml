@@ -1,9 +1,17 @@
 name: Deploy
 
-# Deploy deliberado (botão "Run workflow"), não a cada push na main.
+# Disparado automaticamente ao criar uma tag vX.Y.Z:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Mantém também o botão "Run workflow" como escape hatch (ex. redeploy sem
+# nova tag).
+#
 # Pré-requisito único: infra/bootstrap.sh (WIF + SA de deploy + bucket de state)
 # e as repo variables GCP_WIF_PROVIDER, GCP_DEPLOYER_SA, TF_STATE_BUCKET.
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       image_tag:
@@ -23,21 +31,11 @@ jobs:
     env:
       GCP_PROJECT: igneous-primacy-488819-g4
       GCP_REGION: us-central1
+      IMAGE_TAG: ${{ inputs.image_tag || github.ref_name }}
     defaults:
       run:
         working-directory: infra/terraform
     steps:
-      # A WIF só aceita credenciais da branch main (attribute-condition do
-      # bootstrap). Falha cedo com mensagem clara em vez do erro críptico
-      # "credential is rejected by the attribute condition" na autenticação.
-      - name: Valida a branch
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo "::error::Deploy só funciona a partir da branch main (a WIF rejeita outras branches)."
-          echo "::error::Branch atual: ${{ github.ref }}. Rode o workflow selecionando a branch main."
-          exit 1
-        working-directory: .
-
       - uses: actions/checkout@v4
 
       - name: Autentica no GCP (WIF, sem chave JSON)
@@ -62,17 +60,17 @@ jobs:
           terraform apply -auto-approve \
             -target=google_artifact_registry_repository.images \
             -var-file=prod.tfvars \
-            -var "image_tag=${{ inputs.image_tag }}"
+            -var "image_tag=${{ env.IMAGE_TAG }}"
 
       - name: Build e push das imagens (Cloud Build)
         working-directory: .
-        run: make push-images TAG=${{ inputs.image_tag }}
+        run: make push-images TAG=${{ env.IMAGE_TAG }}
 
       - name: Terraform apply
         run: |
           terraform apply -auto-approve \
             -var-file=prod.tfvars \
-            -var "image_tag=${{ inputs.image_tag }}"
+            -var "image_tag=${{ env.IMAGE_TAG }}"
 
       - name: Smoke de produção
         run: |
