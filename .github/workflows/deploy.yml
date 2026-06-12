@@ -27,6 +27,17 @@ jobs:
       run:
         working-directory: infra/terraform
     steps:
+      # A WIF só aceita credenciais da branch main (attribute-condition do
+      # bootstrap). Falha cedo com mensagem clara em vez do erro críptico
+      # "credential is rejected by the attribute condition" na autenticação.
+      - name: Valida a branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Deploy só funciona a partir da branch main (a WIF rejeita outras branches)."
+          echo "::error::Branch atual: ${{ github.ref }}. Rode o workflow selecionando a branch main."
+          exit 1
+        working-directory: .
+
       - uses: actions/checkout@v4
 
       - name: Autentica no GCP (WIF, sem chave JSON)

@@ -45,10 +45,11 @@ de aceite.
 
 ### Passo 3 — Deploy
 
-Cada deploy: **Actions → Deploy → Run workflow** com a tag da imagem (ex.
-`v0.1.0`). O workflow builda/pusha as imagens, roda `terraform apply` com
-`prod.tfvars` e executa o smoke (gateway vivo + broker negando request sem
-token).
+Cada deploy: **Actions → Deploy → Run workflow**, selecionando a **branch
+`main`** (obrigatório: a WIF rejeita credenciais de outras branches) e a tag da
+imagem (ex. `v0.1.0`). O workflow builda/pusha as imagens, roda `terraform
+apply` com `prod.tfvars` e executa o smoke (gateway vivo + broker negando
+request sem token).
 
 ## Deploy manual (alternativa)
 
