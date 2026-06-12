@@ -47,10 +47,16 @@ def authenticate(request: Request, settings: Settings) -> str:
         raise HTTPException(status_code=403, detail="E-mail não verificado")
 
     email = (claims.get("email") or "").lower()
-    domain = settings.broker_allowed_domain.lower()
+    domain = settings.broker_allowed_domain.lower().strip()
+    allowed_emails = {
+        e.strip().lower() for e in settings.broker_allowed_emails.split(",") if e.strip()
+    }
     # `hd` só existe em contas Workspace; o fallback de sufixo cobre tokens sem o claim.
     hosted_domain = (claims.get("hd") or "").lower()
-    if hosted_domain != domain and not email.endswith(f"@{domain}"):
-        raise HTTPException(status_code=403, detail=f"Conta fora do domínio {domain}")
+    domain_ok = bool(domain) and (hosted_domain == domain or email.endswith(f"@{domain}"))
+    # Sem Workspace (sem domínio), a autorização fina é por allowlist de e-mails.
+    # Nada configurado = nega tudo (fail closed), mesmo que o IAM deixe passar.
+    if not domain_ok and email not in allowed_emails:
+        raise HTTPException(status_code=403, detail="Conta não autorizada para o gateway")
 
     return email

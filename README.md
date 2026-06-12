@@ -85,12 +85,13 @@ Testes e lint: `make test` · `make lint`
 
 ## Segurança (resumo)
 
-1. **Autorização primária = IAM:** o broker roda com
-   `--no-allow-unauthenticated`; só membros do grupo
-   `ai-gateway-users@empresa.com` (`roles/run.invoker`) chegam nele. Token do
-   gcloud sozinho **não** dá acesso.
+1. **Autorização primária = IAM:** o broker roda sem `allUsers`; só quem tem
+   `roles/run.invoker` (grupo Workspace ou, sem Workspace, e-mails individuais
+   da allowlist `gateway_users` no Terraform) chega nele. Token do gcloud
+   sozinho **não** dá acesso.
 2. **Defesa em profundidade:** o broker revalida assinatura/`exp`/
-   `email_verified`/domínio do token. Token nunca é logado.
+   `email_verified` e o domínio (`BROKER_ALLOWED_DOMAIN`) **ou** a allowlist
+   (`BROKER_ALLOWED_EMAILS`); nada configurado nega tudo. Token nunca é logado.
 3. **Segredos:** o `LITELLM_MASTER_KEY` existe só no Secret Manager/broker. O
    dev recebe apenas a própria virtual key (rotacionável). Vertex AI é acessado
    pela service account do Cloud Run — nenhuma chave de provedor distribuída.

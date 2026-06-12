@@ -9,7 +9,11 @@ class Settings(BaseSettings):
     database_url: str
     gateway_public_url: str = "http://localhost:4000"
 
-    broker_allowed_domain: str = "empresa.com"
+    # Autorização (defesa em profundidade; a primária é o IAM do Cloud Run).
+    # Sem Google Workspace não há claim `hd`: use a allowlist de e-mails.
+    # Pelo menos um dos dois deve estar configurado — vazio nega tudo.
+    broker_allowed_domain: str = ""
+    broker_allowed_emails: str = ""  # separados por vírgula
     broker_user_max_budget: float = 50.0
     broker_user_budget_duration: str = "30d"
     # SOMENTE DEV: aceita X-Dev-Email no lugar do Google ID token.
