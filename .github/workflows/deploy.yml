@@ -31,12 +31,22 @@ jobs:
     env:
       GCP_PROJECT: igneous-primacy-488819-g4
       GCP_REGION: us-central1
-      IMAGE_TAG: ${{ inputs.image_tag || github.ref_name }}
     defaults:
       run:
         working-directory: infra/terraform
     steps:
       - uses: actions/checkout@v4
+
+      # Sanitiza a tag (remove espaços e pontuação no fim — ex. "v0.1.0." digitado
+      # no input vira "v0.1.0") antes de usá-la como tag de imagem Docker.
+      - name: Normaliza a tag da imagem
+        working-directory: .
+        run: |
+          TAG="${{ inputs.image_tag || github.ref_name }}"
+          TAG=$(echo "$TAG" | tr -d '[:space:]' | sed -E 's/[.,;:]+$//')
+          if [ -z "$TAG" ]; then echo "::error::Tag de imagem vazia"; exit 1; fi
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "Tag da imagem: $TAG"
 
       - name: Autentica no GCP (WIF, sem chave JSON)
         uses: google-github-actions/auth@v2

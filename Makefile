@@ -9,8 +9,18 @@ push-images: ## Build + push via Cloud Build. Uso: make push-images TAG=v0.1.0
 ifndef TAG
 	$(error Defina a tag: make push-images TAG=v0.1.0)
 endif
-	gcloud builds submit gateway --project $(GCP_PROJECT) --tag $(REGISTRY)/gateway:$(TAG)
-	gcloud builds submit broker --project $(GCP_PROJECT) --tag $(REGISTRY)/broker:$(TAG)
+	@# Retry com backoff: no 1º deploy a API do Cloud Build acabou de ser
+	@# habilitada pelo terraform e a propagação (API + service agent) leva
+	@# 1-2 min — a 1ª tentativa pode falhar com PERMISSION_DENIED transitório.
+	@set -e; for svc in gateway broker; do \
+	  ok=0; \
+	  for i in 1 2 3 4 5; do \
+	    if gcloud builds submit $$svc --project $(GCP_PROJECT) --tag $(REGISTRY)/$$svc:$(TAG); then ok=1; break; fi; \
+	    echo "push de $$svc: tentativa $$i falhou (propagação de API/IAM?) — aguardando $$((i*20))s"; \
+	    sleep $$((i*20)); \
+	  done; \
+	  if [ $$ok -ne 1 ]; then echo "push de $$svc falhou após 5 tentativas"; exit 1; fi; \
+	done
 
 up: ## Sobe o stack local (postgres + litellm + broker)
 	docker compose up --build -d
