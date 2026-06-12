@@ -93,8 +93,8 @@ Outputs: `gateway_url` (vai nos clientes) e `broker_url` (vai no CLI).
 ```bash
 BROKER_URL=$(terraform output -raw broker_url)
 
-# 4.1 SEM token → 403 do próprio GCP (IAM barrando, como deve ser)
-curl -s -o /dev/null -w '%{http_code}\n' -X POST $BROKER_URL/v1/provision   # 403
+# 4.1 SEM token → 401 do broker (validação no app: falta o Bearer)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $BROKER_URL/v1/provision   # 401
 
 # 4.2 Com conta da allowlist → 200 + virtual key
 curl -s -X POST $BROKER_URL/v1/provision \

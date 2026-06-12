@@ -54,15 +54,21 @@ resource "google_secret_manager_secret_iam_member" "broker_database_url" {
   member    = "serviceAccount:${google_service_account.broker.email}"
 }
 
-# AUTORIZAÇÃO DOS DEVS — obrigatório: sem isso o gcloud auth seria uma brecha
-# (qualquer conta Google chegaria ao broker). Cada usuário da allowlist
-# recebe run.invoker SÓ no serviço do broker.
-resource "google_cloud_run_v2_service_iam_member" "broker_invokers" {
-  for_each = toset(var.gateway_users)
+# Broker público na camada de rede (allUsers), como o gateway. A AUTORIZAÇÃO
+# real é no app (broker/auth.py): valida a assinatura do ID token do Google
+# (JWKS), email_verified e a allowlist BROKER_ALLOWED_EMAILS (= gateway_users),
+# fail-closed. Por que não run.invoker por usuário? O `gcloud auth
+# print-identity-token` de conta de usuário emite token com audience fixo (o
+# client do gcloud), que o IAM do Cloud Run rejeita (precisa de audience = URL
+# do serviço) — inviabilizaria o login em um comando. Trocar provedor de
+# autorização da borda (IAM) para o app (allowlist) é o que permite o fluxo
+# "gcloud auth + CLI funciona". A brecha do "qualquer conta Google" continua
+# fechada: sem e-mail na allowlist, o broker nega (403).
+resource "google_cloud_run_v2_service_iam_member" "broker_public" {
   name     = google_cloud_run_v2_service.broker.name
   location = var.region
   role     = "roles/run.invoker"
-  member   = "user:${each.value}"
+  member   = "allUsers"
 }
 
 # O gateway (LiteLLM) é público na camada IAM: a autenticação é por virtual

@@ -89,7 +89,8 @@ resource "google_cloud_run_v2_service" "gateway" {
 resource "google_cloud_run_v2_service" "broker" {
   name     = "ai-gateway-broker"
   location = var.region
-  # Sem allUsers: só os run.invoker de iam.tf chegam aqui (autorização primária).
+  # Público na rede (allUsers em iam.tf); a autorização é no app: token Google
+  # verificado + allowlist de e-mails (broker/auth.py), fail-closed.
   ingress             = "INGRESS_TRAFFIC_ALL"
   deletion_protection = false
 

@@ -91,10 +91,10 @@ jobs:
           curl -fsS --retry 10 --retry-delay 6 --retry-all-errors \
             "$GATEWAY_URL/health/liveliness" > /dev/null
 
-          echo "broker nega request sem token (IAM)?"
+          echo "broker nega request sem token (validação no app)?"
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BROKER_URL/v1/provision")
           if [ "$code" != "403" ] && [ "$code" != "401" ]; then
-            echo "ERRO: esperava 403/401 do IAM, recebi $code — broker pode estar público!"
+            echo "ERRO: esperava 401/403 do broker sem token, recebi $code!"
             exit 1
           fi
           echo "ok ($code). URLs:"
