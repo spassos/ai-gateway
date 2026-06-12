@@ -41,15 +41,15 @@ echo "==> 3/4 Service account de deploy: ${SA_EMAIL}"
 gcloud iam service-accounts create "$SA_NAME" \
   --display-name="AI Gateway deployer (GitHub Actions)" 2>/dev/null || echo "    (já existe)"
 
-# Papéis que o terraform apply + cloud build precisam. projectIamAdmin é o
-# mais sensível (gerencia bindings) — por isso a WIF abaixo restringe o uso
-# desta SA à branch main DESTE repositório.
+# Papéis que o terraform apply precisa. projectIamAdmin é o mais sensível
+# (gerencia bindings) — por isso a WIF abaixo restringe o uso desta SA à
+# branch main DESTE repositório. artifactregistry.admin cobre o push das
+# imagens (build é no runner, não no Cloud Build).
 for role in \
   roles/run.admin \
   roles/cloudsql.admin \
   roles/secretmanager.admin \
   roles/artifactregistry.admin \
-  roles/cloudbuild.builds.editor \
   roles/iam.serviceAccountAdmin \
   roles/iam.serviceAccountUser \
   roles/serviceusage.serviceUsageAdmin \
