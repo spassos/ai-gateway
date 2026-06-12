@@ -32,3 +32,34 @@ jobs:
         run: docker build ./gateway
       - name: Build broker image
         run: docker build ./broker
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - name: Format check
+        run: terraform fmt -check -recursive
+      - name: Init (sem backend)
+        run: terraform init -backend=false
+      - name: Validate
+        run: terraform validate
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sobe o stack local (postgres + litellm + broker)
+        run: |
+          cp .env.example .env
+          docker compose up --build -d --wait
+      - name: Smoke (provision + completion mock)
+        run: make smoke
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs
