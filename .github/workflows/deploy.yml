@@ -1,9 +1,17 @@
 name: Deploy
 
-# Deploy deliberado (botão "Run workflow"), não a cada push na main.
+# Disparado automaticamente ao criar uma tag vX.Y.Z:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Mantém também o botão "Run workflow" como escape hatch (ex. redeploy sem
+# nova tag).
+#
 # Pré-requisito único: infra/bootstrap.sh (WIF + SA de deploy + bucket de state)
 # e as repo variables GCP_WIF_PROVIDER, GCP_DEPLOYER_SA, TF_STATE_BUCKET.
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       image_tag:
@@ -29,6 +37,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Sanitiza a tag (remove espaços e pontuação no fim — ex. "v0.1.0." digitado
+      # no input vira "v0.1.0") antes de usá-la como tag de imagem Docker.
+      - name: Normaliza a tag da imagem
+        working-directory: .
+        run: |
+          TAG="${{ inputs.image_tag || github.ref_name }}"
+          TAG=$(echo "$TAG" | tr -d '[:space:]' | sed -E 's/[.,;:]+$//')
+          if [ -z "$TAG" ]; then echo "::error::Tag de imagem vazia"; exit 1; fi
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "Tag da imagem: $TAG"
+
       - name: Autentica no GCP (WIF, sem chave JSON)
         uses: google-github-actions/auth@v2
         with:
@@ -51,17 +70,17 @@ jobs:
           terraform apply -auto-approve \
             -target=google_artifact_registry_repository.images \
             -var-file=prod.tfvars \
-            -var "image_tag=${{ inputs.image_tag }}"
+            -var "image_tag=${{ env.IMAGE_TAG }}"
 
       - name: Build e push das imagens (Cloud Build)
         working-directory: .
-        run: make push-images TAG=${{ inputs.image_tag }}
+        run: make push-images TAG=${{ env.IMAGE_TAG }}
 
       - name: Terraform apply
         run: |
           terraform apply -auto-approve \
             -var-file=prod.tfvars \
-            -var "image_tag=${{ inputs.image_tag }}"
+            -var "image_tag=${{ env.IMAGE_TAG }}"
 
       - name: Smoke de produção
         run: |

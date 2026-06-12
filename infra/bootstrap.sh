@@ -4,7 +4,16 @@
 #   1. bucket GCS para o state do Terraform
 #   2. service account de deploy (poderosa — ver aviso no fim)
 #   3. Workload Identity Federation restrita a este repositório
-# Depois, configure as repo variables no GitHub (instruções no fim da saída).
+#   4. (opcional) variáveis de repositório no GitHub via gh CLI
+#
+# Por que manual e não no CI?
+#   Problema galinha-e-ovo: o CI autentica no GCP via WIF, mas é este script
+#   que cria o WIF. Sem credencial GCP não há CI; sem CI há este script.
+#   Roda UMA VEZ da sua máquina já autenticada com `gcloud auth login`.
+#
+# Por que o Model Garden (habilitar Claude) é permanentemente manual?
+#   O Google exige aceite dos Termos de Serviço por projeto via Console. Não
+#   existe API para aceitar termos de parceiro programaticamente.
 set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-igneous-primacy-488819-g4}"
@@ -68,19 +77,44 @@ gcloud iam service-accounts add-iam-policy-binding "$SA_EMAIL" \
 
 WIF_PROVIDER="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/providers/${PROVIDER_ID}"
 
-cat <<EOF
+# Configura variáveis no GitHub automaticamente se o gh CLI estiver disponível
+# e autenticado. Caso contrário imprime os valores para copiar manualmente.
+echo ""
+if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+  echo "==> 5/5 Variáveis do GitHub (via gh CLI)"
+  gh variable set GCP_WIF_PROVIDER --body "$WIF_PROVIDER"        --repo "$GITHUB_REPO"
+  gh variable set GCP_DEPLOYER_SA  --body "$SA_EMAIL"            --repo "$GITHUB_REPO"
+  gh variable set TF_STATE_BUCKET  --body "$STATE_BUCKET"        --repo "$GITHUB_REPO"
+  echo "    GCP_WIF_PROVIDER, GCP_DEPLOYER_SA, TF_STATE_BUCKET configurados."
+  echo ""
+  echo "Bootstrap concluído. Único passo manual restante:"
+  echo ""
+  echo "  Vertex AI → Model Garden → busque 'Claude' → Enable nos modelos"
+  echo "  (sonnet, haiku, opus). O Google exige aceite de ToS por projeto via"
+  echo "  Console — não existe API para isso."
+  echo ""
+  echo "Depois: Actions → Deploy → Run workflow (informe a tag, ex. v0.1.0)."
+else
+  echo "==> 5/5 gh CLI não disponível ou não autenticado."
+  echo "    Configure manualmente no GitHub (Settings > Secrets and variables >"
+  echo "    Actions > Variables):"
+  echo ""
+  echo "  GCP_WIF_PROVIDER = ${WIF_PROVIDER}"
+  echo "  GCP_DEPLOYER_SA  = ${SA_EMAIL}"
+  echo "  TF_STATE_BUCKET  = ${STATE_BUCKET}"
+  echo ""
+  echo "  Dica: instale o gh CLI (https://cli.github.com) e rode este script"
+  echo "  novamente — ele configura as variáveis automaticamente."
+fi
 
-Bootstrap concluído. Configure no GitHub (Settings > Secrets and variables >
-Actions > Variables):
+cat <<'EOF'
 
-  GCP_WIF_PROVIDER = ${WIF_PROVIDER}
-  GCP_DEPLOYER_SA  = ${SA_EMAIL}
-  TF_STATE_BUCKET  = ${STATE_BUCKET}
-
-Recomendado: Settings > Environments > production > required reviewers (você),
-para o deploy exigir um clique de aprovação.
+Único passo que NUNCA pode ser automatizado:
+  Vertex AI → Model Garden → busque "Claude" → Enable (sonnet / haiku / opus).
+  O Google exige aceite de ToS de parceiro por projeto via Console. Sem isso
+  as chamadas à Vertex retornam 403 model not found.
 
 AVISO: a SA de deploy é poderosa (inclui projectIamAdmin). A WIF restringe o
-uso dela a workflows da branch main de ${GITHUB_REPO} — não afrouxe a
+uso dela a workflows da branch main deste repositório — não afrouxe a
 attribute-condition.
 EOF

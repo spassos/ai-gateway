@@ -8,23 +8,48 @@ billing ativo no projeto.
 
 ## Deploy pelo CI (recomendado)
 
-Uma vez só, na sua máquina (cria o que o CI não pode criar para si: bucket de
-state, SA de deploy e a federação OIDC GitHub→GCP, restrita à branch main
-deste repo — sem chave JSON em secret):
+### Por que há passos manuais?
+
+Dois passos não podem ser automatizados no CI por motivos fundamentais:
+
+1. **`bootstrap.sh`** — problema de galinha-e-ovo: o CI autentica no GCP via
+   Workload Identity Federation (WIF), mas o WIF é o que o bootstrap cria. Sem
+   credencial GCP não há CI; sem CI há este script rodando localmente uma vez.
+
+2. **Model Garden** — o Google exige aceite dos Termos de Serviço do modelo
+   parceiro (Anthropic) **por projeto**, via Console. Não existe API para aceitar
+   esses termos programaticamente — é uma decisão deliberada de compliance.
+
+### Passo 1 — Bootstrap (uma vez só)
+
+Na sua máquina com `gcloud auth login` feito e `gh` CLI autenticado
+(`gh auth login`):
 
 ```bash
 bash infra/bootstrap.sh
 ```
 
-O script imprime três valores; cadastre-os em GitHub → Settings → Secrets and
-variables → Actions → **Variables**: `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SA`,
-`TF_STATE_BUCKET`. Recomendado: em Settings → Environments → `production`,
-exija sua aprovação (required reviewers).
+Se o `gh` CLI estiver disponível, o script configura automaticamente as três
+variáveis do repositório (`GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SA`,
+`TF_STATE_BUCKET`). Caso contrário, imprime os valores para copiar em GitHub →
+Settings → Secrets and variables → Actions → **Variables**.
 
-Depois, cada deploy é: **Actions → Deploy → Run workflow** com a tag da imagem
-(ex. `v0.1.0`). O workflow builda/pusha as imagens, roda `terraform apply` com
-`prod.tfvars` (allowlist de usuários versionada — mudar usuário = PR) e executa
-o smoke (gateway vivo + broker negando request sem token).
+Recomendado: em Settings → Environments → `production`, exija sua aprovação
+(required reviewers).
+
+### Passo 2 — Habilitar Claude no Model Garden (manual, único)
+
+Console → Vertex AI → Model Garden → busque "Claude" → **Enable** nos modelos
+`claude-sonnet-4-6`, `claude-opus-4-8`, `claude-haiku-4-5`. Gemini não precisa
+de aceite.
+
+### Passo 3 — Deploy
+
+Cada deploy: **Actions → Deploy → Run workflow**, selecionando a **branch
+`main`** (obrigatório: a WIF rejeita credenciais de outras branches) e a tag da
+imagem (ex. `v0.1.0`). O workflow builda/pusha as imagens, roda `terraform
+apply` com `prod.tfvars` e executa o smoke (gateway vivo + broker negando
+request sem token).
 
 ## Deploy manual (alternativa)
 
