@@ -1,6 +1,6 @@
 # Valores de produção usados pelo deploy.yml (terraform apply -var-file=prod.tfvars).
 # Não contém segredos — apenas configuração. image_tag vem do input do workflow.
-project_id      = "bumblebee-fa6a1"
+project_id      = "igneous-primacy-488819-g4"
 region          = "us-central1"
 vertex_location = "us-east5"
 

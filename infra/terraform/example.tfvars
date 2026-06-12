@@ -1,5 +1,5 @@
 # Copie para terraform.tfvars (gitignored) e ajuste.
-project_id = "bumblebee-fa6a1"
+project_id = "igneous-primacy-488819-g4"
 region     = "us-central1"
 
 # Modelos Claude (parceiros) não estão em todas as regiões; us-east5/global

@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      GCP_PROJECT: bumblebee-fa6a1
+      GCP_PROJECT: igneous-primacy-488819-g4
       GCP_REGION: us-central1
     defaults:
       run:

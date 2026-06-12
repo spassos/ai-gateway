@@ -7,7 +7,7 @@
 # Depois, configure as repo variables no GitHub (instruções no fim da saída).
 set -euo pipefail
 
-PROJECT_ID="${PROJECT_ID:-bumblebee-fa6a1}"
+PROJECT_ID="${PROJECT_ID:-igneous-primacy-488819-g4}"
 REGION="${REGION:-us-central1}"
 GITHUB_REPO="${GITHUB_REPO:-spassos/ai-gateway}"
 STATE_BUCKET="${STATE_BUCKET:-${PROJECT_ID}-tfstate}"

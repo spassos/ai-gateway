@@ -1,7 +1,7 @@
 .PHONY: up down logs test lint smoke install-dev push-images
 
 # Projeto/região do deploy (ver infra/terraform/example.tfvars)
-GCP_PROJECT ?= bumblebee-fa6a1
+GCP_PROJECT ?= igneous-primacy-488819-g4
 GCP_REGION  ?= us-central1
 REGISTRY     = $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/ai-gateway
 

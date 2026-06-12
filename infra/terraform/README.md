@@ -37,7 +37,7 @@ aceite explícito por projeto. Gemini não precisa de aceite.
 ## 2. Build e push das imagens
 
 ```bash
-gcloud auth login && gcloud config set project bumblebee-fa6a1
+gcloud auth login && gcloud config set project igneous-primacy-488819-g4
 make push-images TAG=v0.1.0   # usa Cloud Build; cria o repo na 1ª vez via terraform
 ```
 
@@ -52,7 +52,7 @@ make push-images TAG=v0.1.0   # usa Cloud Build; cria o repo na 1ª vez via terr
 bash infra/bootstrap.sh              # se ainda não rodou (bucket de state)
 cd infra/terraform
 cp example.tfvars terraform.tfvars   # ajuste os e-mails da allowlist
-terraform init -backend-config="bucket=bumblebee-fa6a1-tfstate"
+terraform init -backend-config="bucket=igneous-primacy-488819-g4-tfstate"
 terraform apply -target=google_artifact_registry_repository.images
 cd ../.. && make push-images TAG=v0.1.0 && cd infra/terraform
 terraform apply
