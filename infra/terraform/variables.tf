@@ -28,8 +28,8 @@ variable "allowed_domain" {
 variable "gateway_users" {
   description = <<-EOT
     E-mails Google autorizados a usar o gateway (sem Workspace usamos
-    allowlist). Alimenta BROKER_ALLOWED_EMAILS — a autorização real, validada
-    no app (broker/auth.py) junto com a assinatura do ID token do Google.
+    allowlist). Cada e-mail recebe roles/run.invoker no broker (autorização
+    primária) e entra no BROKER_ALLOWED_EMAILS (defesa em profundidade).
   EOT
   type        = list(string)
 }
