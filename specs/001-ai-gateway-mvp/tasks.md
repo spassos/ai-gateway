@@ -37,6 +37,7 @@ Ordenadas por dependência. Status: `[x]` feito · `[ ]` pendente.
 ## P4 — Pós-MVP (não nesta sessão)
 
 - [x] **T-18** Terraform aplicável (Cloud Run ×2, Cloud SQL, Secret Manager, IAM com allowlist de usuários — sem Workspace o `run.invoker` vai por e-mail; broker ganhou `BROKER_ALLOWED_EMAILS`). Guia de deploy em `infra/terraform/README.md`. _Pendente do operador:_ `terraform apply` no projeto `bumblebee-fa6a1` + smoke de prod (403 p/ conta fora da allowlist).
+- [x] **T-28** Deploy pelo CI: workflow `deploy.yml` (workflow_dispatch + WIF sem chave JSON, apply com `prod.tfvars`, smoke pós-deploy) + `infra/bootstrap.sh` (state bucket, SA de deploy, federação OIDC restrita à main). _Pendente do operador:_ rodar o bootstrap e cadastrar as 3 repo variables.
 - [ ] **T-19** Alertas de budget (Slack webhook a 80%).
 - [ ] **T-20** Alinhamento de budget ao mês-calendário (`budget_reset_at` via cron).
 - [ ] **T-21** `ai-gw login --no-rotate` (reuso de key p/ segunda máquina).

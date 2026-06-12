@@ -12,8 +12,10 @@ terraform {
       version = "~> 3.6"
     }
   }
-  # State local por enquanto (1 operador). Ao ter mais gente aplicando,
-  # migrar para backend "gcs" com um bucket dedicado.
+  # Bucket criado pelo infra/bootstrap.sh; nome injetado no init:
+  #   terraform init -backend-config="bucket=<TF_STATE_BUCKET>"
+  # (Se você já aplicou com state local, acrescente -migrate-state.)
+  backend "gcs" {}
 }
 
 provider "google" {
