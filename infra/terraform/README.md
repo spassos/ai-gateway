@@ -1,7 +1,32 @@
-# Deploy na GCP (T-18)
+# Deploy na GCP (T-18 / T-28)
+
+Há dois caminhos: **pelo GitHub Actions** (recomendado, seção "Deploy pelo CI")
+ou manual (seções 2–4). Em ambos, o passo 1 (Model Garden) é manual e único.
 
 Pré-requisitos: `gcloud` autenticado como dono do projeto, `terraform >= 1.7`,
 billing ativo no projeto.
+
+## Deploy pelo CI (recomendado)
+
+Uma vez só, na sua máquina (cria o que o CI não pode criar para si: bucket de
+state, SA de deploy e a federação OIDC GitHub→GCP, restrita à branch main
+deste repo — sem chave JSON em secret):
+
+```bash
+bash infra/bootstrap.sh
+```
+
+O script imprime três valores; cadastre-os em GitHub → Settings → Secrets and
+variables → Actions → **Variables**: `GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SA`,
+`TF_STATE_BUCKET`. Recomendado: em Settings → Environments → `production`,
+exija sua aprovação (required reviewers).
+
+Depois, cada deploy é: **Actions → Deploy → Run workflow** com a tag da imagem
+(ex. `v0.1.0`). O workflow builda/pusha as imagens, roda `terraform apply` com
+`prod.tfvars` (allowlist de usuários versionada — mudar usuário = PR) e executa
+o smoke (gateway vivo + broker negando request sem token).
+
+## Deploy manual (alternativa)
 
 ## 1. Habilitar os modelos Claude no Model Garden (manual, uma vez)
 
@@ -24,9 +49,10 @@ make push-images TAG=v0.1.0   # usa Cloud Build; cria o repo na 1ª vez via terr
 ## 3. Aplicar
 
 ```bash
+bash infra/bootstrap.sh              # se ainda não rodou (bucket de state)
 cd infra/terraform
 cp example.tfvars terraform.tfvars   # ajuste os e-mails da allowlist
-terraform init
+terraform init -backend-config="bucket=bumblebee-fa6a1-tfstate"
 terraform apply -target=google_artifact_registry_repository.images
 cd ../.. && make push-images TAG=v0.1.0 && cd infra/terraform
 terraform apply
@@ -61,5 +87,5 @@ no passo 4.2) — é o teste de que a brecha do gcloud está fechada.
 - **Nova versão:** `make push-images TAG=v0.2.0`, mude `image_tag`, apply.
 - **Custo por usuário:** SQL em `LiteLLM_SpendLogs` (Cloud SQL) ou painel do
   LiteLLM em `<gateway_url>/ui` (login com a master key).
-- O tfstate contém segredos — não commitar (já no .gitignore); migre para
-  backend GCS com IAM restrito quando houver mais de um operador.
+- O tfstate (no bucket GCS, com versioning) contém segredos — mantenha o
+  acesso ao bucket restrito a você e à SA de deploy.

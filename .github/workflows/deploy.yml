@@ -1,0 +1,83 @@
+name: Deploy
+
+# Deploy deliberado (botão "Run workflow"), não a cada push na main.
+# Pré-requisito único: infra/bootstrap.sh (WIF + SA de deploy + bucket de state)
+# e as repo variables GCP_WIF_PROVIDER, GCP_DEPLOYER_SA, TF_STATE_BUCKET.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag das imagens (ex. v0.1.0)"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # token OIDC para o Workload Identity Federation
+
+concurrency: deploy-production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      GCP_PROJECT: bumblebee-fa6a1
+      GCP_REGION: us-central1
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Autentica no GCP (WIF, sem chave JSON)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform init (state no GCS)
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      # No 1º deploy o registry ainda não existe e o push falharia — este apply
+      # direcionado cria APIs + Artifact Registry antes das imagens. Idempotente.
+      - name: Terraform apply (somente registry)
+        run: |
+          terraform apply -auto-approve \
+            -target=google_artifact_registry_repository.images \
+            -var-file=prod.tfvars \
+            -var "image_tag=${{ inputs.image_tag }}"
+
+      - name: Build e push das imagens (Cloud Build)
+        working-directory: .
+        run: make push-images TAG=${{ inputs.image_tag }}
+
+      - name: Terraform apply
+        run: |
+          terraform apply -auto-approve \
+            -var-file=prod.tfvars \
+            -var "image_tag=${{ inputs.image_tag }}"
+
+      - name: Smoke de produção
+        run: |
+          GATEWAY_URL=$(terraform output -raw gateway_url)
+          BROKER_URL=$(terraform output -raw broker_url)
+
+          echo "gateway vivo?"
+          curl -fsS --retry 10 --retry-delay 6 --retry-all-errors \
+            "$GATEWAY_URL/health/liveliness" > /dev/null
+
+          echo "broker nega request sem token (IAM)?"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BROKER_URL/v1/provision")
+          if [ "$code" != "403" ] && [ "$code" != "401" ]; then
+            echo "ERRO: esperava 403/401 do IAM, recebi $code — broker pode estar público!"
+            exit 1
+          fi
+          echo "ok ($code). URLs:"
+          echo "  gateway: $GATEWAY_URL"
+          echo "  broker:  $BROKER_URL"

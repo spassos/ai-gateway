@@ -22,6 +22,7 @@ htmlcov/
 *.tfstate.*
 *.tfvars
 !example.tfvars
+!prod.tfvars
 
 # IDE / SO
 .idea/
