@@ -4,6 +4,10 @@ resource "google_sql_database_instance" "main" {
   region           = var.region
 
   settings {
+    # Edição ENTERPRISE (não ENTERPRISE_PLUS): só ela aceita os tiers
+    # shared-core baratos (db-f1-micro). Sem isto, a API assume ENTERPRISE_PLUS
+    # e rejeita o db-f1-micro.
+    edition = "ENTERPRISE"
     # Menor tier; subir para db-custom-1-3840+ quando houver uso real.
     tier = "db-f1-micro"
     ip_configuration {
