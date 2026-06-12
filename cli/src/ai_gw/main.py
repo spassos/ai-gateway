@@ -17,7 +17,10 @@ from .store import Credentials
 app = typer.Typer(help="AI Gateway: acesso corporativo aos modelos do Vertex AI.")
 console = Console()
 
-DEFAULT_BROKER_URL = os.environ.get("AI_GW_BROKER_URL", "http://localhost:8080")
+# Broker de produção (Cloud Run). Override por AI_GW_BROKER_URL p/ dev local
+# (ex. http://localhost:8080 com o docker-compose).
+PROD_BROKER_URL = "https://ai-gateway-broker-hgqduecy4q-uc.a.run.app"
+DEFAULT_BROKER_URL = os.environ.get("AI_GW_BROKER_URL", PROD_BROKER_URL)
 
 
 class Client(StrEnum):

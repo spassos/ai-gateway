@@ -143,6 +143,29 @@ async def test_provision_allows_email_in_allowlist_without_domain(audit_events, 
     assert response.json()["user_email"] == "sergio.passos88@gmail.com"
 
 
+async def test_provision_accepts_x_gateway_token_header(audit_events, monkeypatch):
+    # Via `gcloud run services proxy` o Authorization é consumido pelo IAM;
+    # o CLI manda o token também em X-Gateway-Token, que atravessa intacto.
+    settings = make_settings(
+        broker_dev_fake_auth=False,
+        broker_allowed_domain="",
+        broker_allowed_emails="dev@empresa.com",
+    )
+    monkeypatch.setattr(
+        "broker.auth.google_id_token.verify_oauth2_token",
+        lambda token, request, audience=None: {
+            "iss": "https://accounts.google.com",
+            "email": "dev@empresa.com",
+            "email_verified": True,
+        },
+    )
+    async with make_client(FakeLiteLLM(), settings) as client:
+        response = await client.post("/v1/provision", headers={"X-Gateway-Token": "fake-token"})
+
+    assert response.status_code == 200
+    assert response.json()["user_email"] == "dev@empresa.com"
+
+
 async def test_provision_denies_everything_when_nothing_configured(audit_events, monkeypatch):
     # Fail closed: sem domínio e sem allowlist, nenhuma conta passa.
     settings = make_settings(

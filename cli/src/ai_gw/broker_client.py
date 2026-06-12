@@ -14,7 +14,11 @@ def provision(
     if dev_email:
         headers["X-Dev-Email"] = dev_email
     elif id_token:
+        # Authorization é consumido pela camada de IAM quando o broker é
+        # acessado via `gcloud run services proxy` (o proxy o substitui pelo
+        # token dele). X-Gateway-Token atravessa intacto — o broker aceita os dois.
         headers["Authorization"] = f"Bearer {id_token}"
+        headers["X-Gateway-Token"] = id_token
     else:
         raise BrokerError("É preciso um identity token ou --dev-email")
 

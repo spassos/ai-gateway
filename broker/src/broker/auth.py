@@ -26,11 +26,18 @@ def authenticate(request: Request, settings: Settings) -> str:
         if dev_email:
             return dev_email.lower()
 
+    # X-Gateway-Token tem prioridade: é o credencial intencional do CLI. O
+    # Authorization é consumido/substituído pela camada de IAM quando o acesso
+    # é via `gcloud run services proxy` — pode nem chegar, ou chegar com o token
+    # do próprio proxy. Mesma validação completa nos dois caminhos.
     authorization = request.headers.get("Authorization", "")
-    if not authorization.startswith("Bearer "):
+    gateway_token = request.headers.get("X-Gateway-Token", "").strip()
+    if gateway_token:
+        token = gateway_token
+    elif authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+    else:
         raise HTTPException(status_code=401, detail="Bearer <google_id_token> ausente")
-
-    token = authorization.removeprefix("Bearer ").strip()
     try:
         # audience=None: o ID token do `gcloud auth print-identity-token` de
         # contas de usuário tem aud fixo do client do gcloud; o IAM do Cloud Run
