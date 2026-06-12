@@ -1,0 +1,52 @@
+# Config do LiteLLM Proxy (motor do gateway).
+# Nomes públicos (model_name) são agnósticos de provedor: trocar o backend
+# depois não quebra a config dos clientes. Ver specs/001-ai-gateway-mvp/plan.md.
+
+model_list:
+  # --- Claude via Vertex AI (partner models) ---
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: vertex_ai/claude-sonnet-4-6
+      vertex_project: os.environ/VERTEX_PROJECT_ID
+      vertex_location: os.environ/VERTEX_LOCATION
+  - model_name: claude-opus-4-8
+    litellm_params:
+      model: vertex_ai/claude-opus-4-8
+      vertex_project: os.environ/VERTEX_PROJECT_ID
+      vertex_location: os.environ/VERTEX_LOCATION
+  - model_name: claude-haiku-4-5
+    litellm_params:
+      model: vertex_ai/claude-haiku-4-5
+      vertex_project: os.environ/VERTEX_PROJECT_ID
+      vertex_location: os.environ/VERTEX_LOCATION
+
+  # --- Gemini via Vertex AI (nativo) ---
+  - model_name: gemini-2.5-pro
+    litellm_params:
+      model: vertex_ai/gemini-2.5-pro
+      vertex_project: os.environ/VERTEX_PROJECT_ID
+      vertex_location: os.environ/VERTEX_LOCATION
+  - model_name: gemini-2.5-flash
+    litellm_params:
+      model: vertex_ai/gemini-2.5-flash
+      vertex_project: os.environ/VERTEX_PROJECT_ID
+      vertex_location: os.environ/VERTEX_LOCATION
+
+  # --- Mock para e2e local sem credenciais GCP (NÃO usar em produção) ---
+  # Custo sintético: modelos de custo zero PULAM os checks de budget no LiteLLM
+  # (_is_model_cost_zero) — sem isso o e2e local não exercita o limite de $50.
+  - model_name: mock-gpt
+    litellm_params:
+      model: openai/mock-gpt
+      api_key: fake-key
+      mock_response: "Resposta mock do ai-gateway (modelo de teste local)."
+      input_cost_per_token: 0.001
+      output_cost_per_token: 0.001
+
+litellm_settings:
+  drop_params: true # ignora params não suportados pelo backend em vez de 400
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: false # config é a fonte da verdade dos modelos
