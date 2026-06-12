@@ -61,9 +61,12 @@ aceite explícito por projeto. Gemini não precisa de aceite.
 
 ## 2. Build e push das imagens
 
+Precisa de Docker local. O build é na sua máquina e o push vai direto ao
+Artifact Registry (sem Cloud Build).
+
 ```bash
 gcloud auth login && gcloud config set project igneous-primacy-488819-g4
-make push-images TAG=v0.1.0   # usa Cloud Build; cria o repo na 1ª vez via terraform
+make push-images TAG=v0.1.0
 ```
 
 > Ordem na primeira vez: rode `terraform apply` uma vez só com
