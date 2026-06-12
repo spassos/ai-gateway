@@ -36,7 +36,7 @@ test:
 smoke: ## E2E local: provisiona key, chama o modelo mock, confere status
 	@set -e; \
 	echo "1/4 broker healthz..."; \
-	curl -fsS localhost:8080/healthz > /dev/null; \
+	curl -fsS --retry 12 --retry-delay 5 --retry-all-errors localhost:8080/healthz > /dev/null; \
 	echo "2/4 litellm liveliness..."; \
 	curl -fsS localhost:4000/health/liveliness > /dev/null; \
 	echo "3/4 provisionando key para dev@empresa.com..."; \
