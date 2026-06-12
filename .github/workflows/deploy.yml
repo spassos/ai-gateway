@@ -37,16 +37,25 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build e push das imagens (Cloud Build)
-        working-directory: .
-        run: make push-images TAG=${{ inputs.image_tag }}
-
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.9.8"
 
       - name: Terraform init (state no GCS)
         run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      # No 1º deploy o registry ainda não existe e o push falharia — este apply
+      # direcionado cria APIs + Artifact Registry antes das imagens. Idempotente.
+      - name: Terraform apply (somente registry)
+        run: |
+          terraform apply -auto-approve \
+            -target=google_artifact_registry_repository.images \
+            -var-file=prod.tfvars \
+            -var "image_tag=${{ inputs.image_tag }}"
+
+      - name: Build e push das imagens (Cloud Build)
+        working-directory: .
+        run: make push-images TAG=${{ inputs.image_tag }}
 
       - name: Terraform apply
         run: |
