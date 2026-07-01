@@ -1,0 +1,89 @@
+name: Destroy
+
+# Derruba TODA a infra do AI Gateway (Cloud Run, Cloud SQL, IAM, Artifact
+# Registry) para zerar custos. NÃO apaga o bucket de state nem a WIF/SA de
+# deploy (criados fora do Terraform, por infra/bootstrap.sh) — assim você
+# consegue fazer deploy de novo depois sem re-bootstrapping.
+#
+# Só roda manualmente e exige digitar "destroy" para confirmar. Precisa ser
+# disparado a partir da branch main (a WIF só aceita refs/heads/main).
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Digite "destroy" para confirmar que quer derrubar tudo'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # token OIDC para o Workload Identity Federation
+
+concurrency: deploy-production # mesmo lock do deploy: nunca destruir e aplicar juntos
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - name: Valida a confirmação
+        working-directory: .
+        run: |
+          if [ "${{ inputs.confirm }}" != "destroy" ]; then
+            echo "::error::Confirmação inválida. Digite exatamente 'destroy' para prosseguir."
+            exit 1
+          fi
+
+      # A WIF é restrita a refs/heads/main; disparar de outra branch daria
+      # "credential is rejected by the attribute condition". Falha cedo e claro.
+      - name: Exige branch main
+        working-directory: .
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "::error::Rode este workflow a partir da branch main (WIF só aceita main)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Autentica no GCP (WIF, sem chave JSON)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform init (state no GCS)
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      # Libera a trava do Cloud SQL antes do destroy. Sem isto o provider
+      # recusa apagar a instância (deletion_protection=true). image_tag é
+      # required pelo módulo, mas irrelevante para destruir — valor dummy.
+      - name: Remove a trava do Cloud SQL
+        run: |
+          terraform apply -auto-approve \
+            -target=google_sql_database_instance.main \
+            -var-file=prod.tfvars \
+            -var "db_deletion_protection=false" \
+            -var "image_tag=destroy"
+
+      - name: Terraform destroy
+        run: |
+          terraform destroy -auto-approve \
+            -var-file=prod.tfvars \
+            -var "db_deletion_protection=false" \
+            -var "image_tag=destroy"
+
+      - name: Resumo
+        run: |
+          echo "Infra derrubada. O que continua de pé (fora do Terraform):"
+          echo "  - bucket de state (${{ vars.TF_STATE_BUCKET }})"
+          echo "  - WIF provider + service account de deploy"
+          echo "Para reprovisionar: crie uma tag vX.Y.Z e o workflow Deploy recria tudo."

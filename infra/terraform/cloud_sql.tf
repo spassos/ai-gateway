@@ -32,7 +32,8 @@ resource "google_sql_database_instance" "main" {
   }
 
   # Proteção contra `terraform destroy` acidental do banco de auditoria.
-  deletion_protection = true
+  # O workflow de destroy passa db_deletion_protection=false para liberar.
+  deletion_protection = var.db_deletion_protection
   depends_on          = [google_project_service.apis]
 }
 

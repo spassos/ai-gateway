@@ -40,6 +40,15 @@ variable "user_max_budget" {
   default     = 50
 }
 
+variable "db_deletion_protection" {
+  description = <<-EOT
+    Trava do Cloud SQL contra destruição acidental. Fica true em operação
+    normal; o workflow de destroy passa false para poder derrubar o banco.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "db_activation_policy" {
   description = <<-EOT
     Estado do Cloud SQL: "ALWAYS" (ligado 24/7) ou "NEVER" (parado, cobra só o
