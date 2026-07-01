@@ -10,6 +10,14 @@ resource "google_sql_database_instance" "main" {
     edition = "ENTERPRISE"
     # Menor tier; subir para db-custom-1-3840+ quando houver uso real.
     tier = "db-f1-micro"
+    # ALWAYS = ligado 24/7; NEVER = parado (paga só o disco). Sem usuários,
+    # setar db_activation_policy=NEVER zera quase todo o custo sem destruir o
+    # banco — religa em ~1 min quando for testar.
+    activation_policy = var.db_activation_policy
+    # Disco mínimo e sem autoresize: o volume de dados (keys, spend, audit) é
+    # ínfimo; não deixamos o disco crescer (e encarecer) sozinho.
+    disk_size         = 10
+    disk_autoresize   = false
     ip_configuration {
       # Sem IP público exposto a redes: o acesso é só via Cloud SQL connector
       # (volume /cloudsql nos serviços Cloud Run).
@@ -17,7 +25,9 @@ resource "google_sql_database_instance" "main" {
       ssl_mode     = "ENCRYPTED_ONLY"
     }
     backup_configuration {
-      enabled = true
+      # Backup desligado no ambiente de testes (sem usuários = sem dado a
+      # proteger). Reativar antes de ir a produção.
+      enabled = false
     }
   }
 

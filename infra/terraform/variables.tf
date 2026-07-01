@@ -40,6 +40,20 @@ variable "user_max_budget" {
   default     = 50
 }
 
+variable "db_activation_policy" {
+  description = <<-EOT
+    Estado do Cloud SQL: "ALWAYS" (ligado 24/7) ou "NEVER" (parado, cobra só o
+    disco). Sem usuários, use "NEVER" para zerar quase todo o custo sem destruir
+    o banco; volte para "ALWAYS" ~1 min antes de testar.
+  EOT
+  type        = string
+  default     = "ALWAYS"
+  validation {
+    condition     = contains(["ALWAYS", "NEVER"], var.db_activation_policy)
+    error_message = "db_activation_policy deve ser ALWAYS ou NEVER."
+  }
+}
+
 variable "image_tag" {
   description = "Tag das imagens no Artifact Registry (nunca usar latest em produção)"
   type        = string
