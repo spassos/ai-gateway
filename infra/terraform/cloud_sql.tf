@@ -16,8 +16,8 @@ resource "google_sql_database_instance" "main" {
     activation_policy = var.db_activation_policy
     # Disco mínimo e sem autoresize: o volume de dados (keys, spend, audit) é
     # ínfimo; não deixamos o disco crescer (e encarecer) sozinho.
-    disk_size         = 10
-    disk_autoresize   = false
+    disk_size       = 10
+    disk_autoresize = false
     ip_configuration {
       # Sem IP público exposto a redes: o acesso é só via Cloud SQL connector
       # (volume /cloudsql nos serviços Cloud Run).
