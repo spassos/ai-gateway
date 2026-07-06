@@ -51,6 +51,12 @@ resource "google_sql_user" "litellm" {
   name     = "litellm"
   instance = google_sql_database_instance.main.name
   password = random_password.db.result
+
+  # Sem esta ordem explícita, o destroy apaga database e user em paralelo (não
+  # há dependência implícita entre os dois) — o DROP ROLE corre e falha porque
+  # as tabelas do LiteLLM ainda pertencem a esse role ("cannot be dropped
+  # because some objects depend on it"). Forçamos database primeiro.
+  depends_on = [google_sql_database.litellm]
 }
 
 locals {
